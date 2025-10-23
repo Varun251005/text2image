@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AI Image Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="dashboard-body">
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <span class="logo-icon">🎨</span>
+                <span class="brand-name">AI Image Generator</span>
+            </div>
+            <div class="nav-menu">
+                <span class="user-welcome">Welcome, <strong>{{ username }}</strong></span>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="generator-section">
+            <div class="card">
+                <h2>✨ Generate Your Image</h2>
+                <p class="card-subtitle">Describe what you want to create and watch the magic happen</p>
+                
+                <div class="form-group">
+                    <label for="prompt">Enter your prompt</label>
+                    <textarea id="prompt" rows="4" 
+                              placeholder="e.g., A beautiful sunset over mountains, photorealistic style, 4k quality"></textarea>
+                </div>
+                
+                <button id="generateBtn" class="btn btn-primary btn-large">
+                    <span class="btn-text">Generate Image</span>
+                    <span class="btn-icon">🚀</span>
+                </button>
+                
+                <div id="status" class="status-message"></div>
+            </div>
+            
+            <div class="examples-section">
+                <h3>💡 Try these examples:</h3>
+                <div class="example-chips">
+                    <span class="chip" onclick="setPrompt('A futuristic city at sunset with flying cars')">🌆 Futuristic City</span>
+                    <span class="chip" onclick="setPrompt('A cute cat wearing sunglasses on a beach')">😎 Cool Cat</span>
+                    <span class="chip" onclick="setPrompt('A magical forest with glowing mushrooms')">🍄 Magic Forest</span>
+                    <span class="chip" onclick="setPrompt('A dragon flying over mountains')">🐉 Epic Dragon</span>
+                    <span class="chip" onclick="setPrompt('A astronaut riding a horse on Mars')">🚀 Space Adventure</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <div class="card result-card">
+                <h3>🎨 Generated Image</h3>
+                <div id="imageContainer" class="image-container">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🖼️</div>
+                        <p>Your generated image will appear here</p>
+                    </div>
+                </div>
+                <div id="modelInfo" class="model-info"></div>
+                
+                <div class="action-buttons" id="actionButtons" style="display: none;">
+                    <button id="newPromptBtn" class="btn btn-primary btn-action">
+                        ✏️ New Prompt
+                    </button>
+                    <button id="generateMoreBtn" class="btn btn-secondary btn-action">
+                        🔄 Regenerate Same
+                    </button>
+                    <button id="downloadBtn" class="btn btn-success btn-action">
+                        💾 Download Image
+                    </button>
+                </div>
+                
+                <div id="gallery" class="image-gallery"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generateBtn');
+        const promptInput = document.getElementById('prompt');
+        const statusDiv = document.getElementById('status');
+        const imageContainer = document.getElementById('imageContainer');
+        const modelInfo = document.getElementById('modelInfo');
+        const actionButtons = document.getElementById('actionButtons');
+        const newPromptBtn = document.getElementById('newPromptBtn');
+        const generateMoreBtn = document.getElementById('generateMoreBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const gallery = document.getElementById('gallery');
+        
+        let currentImageUrl = null;
+        let currentPrompt = '';
+        let imageHistory = [];
+
+        function setPrompt(text) {
+            promptInput.value = text;
+            promptInput.focus();
+        }
+
+        function resetForNewPrompt() {
+            promptInput.value = '';
+            promptInput.focus();
+            imageContainer.innerHTML = '<div class="placeholder"><div class="placeholder-icon">🖼️</div><p>Your generated image will appear here</p></div>';
+            statusDiv.style.display = 'none';
+            modelInfo.innerHTML = '';
+            actionButtons.style.display = 'none';
+            currentImageUrl = null;
+            currentPrompt = '';
+            // Scroll to prompt input
+            promptInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        async function generateImage(prompt, isVariation = false) {
+            if (!prompt) {
+                showStatus('Please enter a prompt', 'error');
+                return;
+            }
+
+            // Add variation suffix if requested
+            const finalPrompt = isVariation ? 
+                `${prompt}, variation ${Math.floor(Math.random() * 1000)}, different style` : 
+                prompt;
+
+            // Show loading state
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="spinner"></span> Generating...';
+            showStatus('🎨 Creating your masterpiece...', 'loading');
+            imageContainer.innerHTML = '<div class="loading-spinner"><div class="spinner-large"></div></div>';
+            actionButtons.style.display = 'none';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: finalPrompt })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('✅ Image generated successfully!', 'success');
+                    currentImageUrl = data.image;
+                    currentPrompt = prompt;
+                    
+                    imageContainer.innerHTML = `<img src="${data.image}" alt="Generated image" class="generated-image">`;
+                    modelInfo.innerHTML = `<small>Generated using: ${data.model}</small>`;
+                    actionButtons.style.display = 'flex';
+                    
+                    // Add to history
+                    addToGallery(data.image, finalPrompt);
+                } else {
+                    showStatus('❌ ' + (data.error || 'Failed to generate image'), 'error');
+                    imageContainer.innerHTML = '<div class="placeholder"><div class="placeholder-icon">❌</div><p>Failed to generate image. Try again!</p></div>';
+                }
+            } catch (error) {
+                showStatus('❌ Network error: ' + error.message, 'error');
+                imageContainer.innerHTML = '<div class="placeholder"><div class="placeholder-icon">❌</div><p>Network error. Try again!</p></div>';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<span class="btn-text">Generate Image</span><span class="btn-icon">🚀</span>';
+            }
+        }
+
+        function addToGallery(imageUrl, prompt) {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+            galleryItem.innerHTML = `
+                <img src="${imageUrl}" alt="Generated" onclick="viewImage('${imageUrl}')">
+                <div class="gallery-item-overlay">
+                    <button onclick="downloadImage('${imageUrl}')" class="gallery-btn">💾</button>
+                    <button onclick="viewImage('${imageUrl}')" class="gallery-btn">👁️</button>
+                </div>
+            `;
+            
+            imageHistory.unshift({url: imageUrl, prompt: prompt});
+            gallery.insertBefore(galleryItem, gallery.firstChild);
+            
+            // Keep only last 6 images in gallery
+            if (gallery.children.length > 6) {
+                gallery.removeChild(gallery.lastChild);
+            }
+        }
+
+        function viewImage(imageUrl) {
+            currentImageUrl = imageUrl;
+            imageContainer.innerHTML = `<img src="${imageUrl}" alt="Generated image" class="generated-image">`;
+            imageContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadImage(imageUrl) {
+            const link = document.createElement('a');
+            link.href = imageUrl || currentImageUrl;
+            link.download = `ai-generated-${Date.now()}.png`;
+            link.click();
+        }
+
+        generateBtn.addEventListener('click', () => {
+            const prompt = promptInput.value.trim();
+            generateImage(prompt, false);
+        });
+
+        newPromptBtn.addEventListener('click', () => {
+            resetForNewPrompt();
+        });
+
+        generateMoreBtn.addEventListener('click', () => {
+            showStatus('🔄 Regenerating with same prompt...', 'loading');
+            generateImage(currentPrompt, false);
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            downloadImage(currentImageUrl);
+        });
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message status-' + type;
+            statusDiv.style.display = 'block';
+        }
+
+        // Allow Enter key to generate (with Shift+Enter for new line)
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                generateBtn.click();
+            }
+        });
+    </script>
+</body>
+</html>

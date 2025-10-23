@@ -1,0 +1,7 @@
+gradio
+huggingface_hub
+flask
+requests
+pillow
+werkzeug
+gunicorn
