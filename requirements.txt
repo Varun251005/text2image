@@ -1,7 +1,5 @@
-gradio
-huggingface_hub
-flask
-requests
-pillow
-werkzeug
-gunicorn
+flask==3.0.0
+requests==2.31.0
+pillow==10.1.0
+werkzeug==3.0.1
+gunicorn==21.2.0
