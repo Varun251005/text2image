@@ -9,7 +9,8 @@ from PIL import Image
 
 app = Flask(__name__)
 # Generate secure secret key: python -c "import secrets; print(secrets.token_hex(32))"
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
+import secrets
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 # Hugging Face configuration
 HF_TOKEN = os.environ.get("HF_TOKEN")
