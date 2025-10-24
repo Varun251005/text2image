@@ -1,0 +1,42 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Environment files
+.env
+.env.local
+
+# Database
+*.db
+users.db
+
+# Documentation
+*.md
+README.md
+DEPLOYMENT.md
+QUICK_DEPLOY.md
+FIREBASE_DEPLOY.md
+
+# IDE
+.vscode/
+.idea/
+
+# Gradio cache
+.gradio/
+
+# Misc
+*.log
